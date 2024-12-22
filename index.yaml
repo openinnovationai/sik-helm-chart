@@ -3,12 +3,12 @@ entries:
   slurm-cluster-chart:
   - apiVersion: v2
     appVersion: 1.21.0
-    created: "2024-12-16T11:11:36.306212+04:00"
+    created: "2024-12-22T11:45:35.921+04:00"
     description: A Helm chart for Kubernetes
-    digest: 40c865ba59df7d510f84cba0add47dc9c5c814f84eda92d215ec4fe23d3e08a0
+    digest: 571b44c8a218fc5fe1779fddcb19b980592e4c126c2090d62b6a3a76e0eb48c3
     name: slurm-cluster-chart
     type: application
     urls:
-    - slurm-cluster-chart-0.21.0.tgz
-    version: 0.21.0
-generated: "2024-12-16T11:11:36.303995+04:00"
+    - slurm-cluster-chart-0.24.0.tgz
+    version: 0.24.0
+generated: "2024-12-22T11:45:35.914619+04:00"
