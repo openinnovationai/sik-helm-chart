@@ -1,0 +1,27 @@
+## For local users public key
+PasswordAuthentication no
+PubkeyAuthentication yes
+PermitRootLogin no
+AuthorizedKeysFile
+
+## For Password auth with LDAP
+# Allow password authentication
+# PasswordAuthentication yes
+
+# Disable public key authentication (since we're using password auth)
+# PubkeyAuthentication no
+
+# Disallow root login via SSH
+# PermitRootLogin no
+
+# Specify the default authorized keys file (even though we're not using it)
+# AuthorizedKeysFile .ssh/authorized_keys
+
+# Enable challenge-response authentication
+# ChallengeResponseAuthentication yes
+
+# Allow PAM authentication
+# UsePAM yes
+
+# Explicitly allow LDAP users
+# AllowUsers *@*

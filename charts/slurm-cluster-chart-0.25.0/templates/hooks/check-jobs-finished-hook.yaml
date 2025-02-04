@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: update-ssh-keys-users
+  annotations:
+    "helm.sh/hook": post-upgrade
+    "helm.sh/hook-weight": "5" 
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded      
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 0
+  template:
+    metadata:
+      name: update-sshk-keys-users  
+    spec:
+      serviceAccountName: {{ .Release.Name }}
+      restartPolicy: Never
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }} 
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}        
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret | default "gitlab-registry-credentials" | quote }}       
+      containers:
+      - name: update-users-creation
+        image: registry.gitlab.com/openinnovationai/platform/mlops/slurm-docker/slurm-nfs-client:2951011a
+        command: 
+        - "/bin/sh"
+        - "-c"
+        - |          
+          echo "Setting directory permissions..."
+          mkdir -p /home/config
+          chown root:root /home/config
+          chmod 755 /home/config
+          
+          echo "Creating temporary file..."
+          cp -v /config/users.yaml /home/config/users.yaml.new
+          chown root:root /home/config/users.yaml.new
+          chmod 644 /home/config/users.yaml.new
+          sync
+          
+          echo "Moving file into place..."
+          mv -f /home/config/users.yaml.new /home/config/users.yaml
+          sync
+          
+          # Multiple touches to ensure change detection
+          for i in {1..3}; do
+            echo "Touching file attempt $i..."
+            sleep 1
+            touch /home/config/users.yaml
+            sync
+          done
+
+          echo "Waiting for changes to propagate..."
+          sleep 5            
+        #args:
+          #- check-queue-hook
+        volumeMounts:
+          - name: authorized-keys
+            mountPath: /config
+          - mountPath: {{ .Values.storage.mountPath }}
+            name: slurm-jobdir                     
+      volumes:
+        - name: slurm-jobdir
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.claimName }}
+        - name: authorized-keys
+          configMap:
+            {{ if .Values.sshUsers }}
+            name: {{ .Release.Name }}-ssh-users-config
+            {{ else }}
+            name: authorized-keys-configmap
+            {{ end }}      

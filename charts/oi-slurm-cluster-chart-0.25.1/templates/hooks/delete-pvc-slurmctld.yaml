@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: delete-pvc-hook
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-delete-policy": hook-succeeded
+    "helm.sh/hook-weight": "4"
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 0
+  template:
+    metadata:
+      name: delete-pvc-hook
+    spec:
+      serviceAccountName: {{ .Release.Name }}
+      restartPolicy: Never
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}                
+      containers:
+      - name: delete-pvc
+        image: bitnami/kubectl
+        command:
+        - /bin/sh
+        - -c
+        - |
+          kubectl get pvc -o name | grep slurm | xargs -r kubectl delete

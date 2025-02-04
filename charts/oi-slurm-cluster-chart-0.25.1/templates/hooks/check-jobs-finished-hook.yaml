@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: update-ssh-keys-users
+  annotations:
+    "helm.sh/hook": post-upgrade
+    "helm.sh/hook-weight": "5" 
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded      
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 0
+  template:
+    metadata:
+      name: update-sshk-keys-users  
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      serviceAccountName: {{ .Release.Name }}
+      restartPolicy: Never
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }} 
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}        
+      containers:
+      - name: update-users-creation
+        image: registry.gitlab.com/openinnovationai/platform/mlops/slurm-docker/slurm-nfs-client:6fb0735a
+        command: 
+        - "/bin/bash"
+        - "-c"
+        - |
+          echo "Current context:"
+          id
+          
+          echo "Current /home contents:"
+          ls -la /home
+          
+          echo "Removing old config directory..."
+          rm -rf /home/config
+          rm -rf /home/config-new
+          
+          echo "Creating new config directory..."
+          mkdir -p /home/config
+          chmod 775 /home/config
+          
+          echo "New directory status:"
+          ls -la /home
+          
+          echo "Copying users file..."
+          cp -v /tmp/config/users.yaml /home/config/
+          chmod 664 /home/config/users.yaml
+          
+          echo "Final status:"
+          ls -la /home/config/users.yaml
+        volumeMounts:
+          - mountPath: /home
+            name: slurm-jobdir
+          - name: config-dir
+            mountPath: /tmp/config
+          - name: authorized-keys
+            mountPath: /tmp/config/users.yaml
+            subPath: users.yaml                            
+      volumes:
+        - name: slurm-jobdir
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.claimName }}
+        - name: config-dir
+          emptyDir: {}
+        - name: authorized-keys
+          configMap:
+            name: {{ .Release.Name }}-ssh-users-config
+            defaultMode: 0664

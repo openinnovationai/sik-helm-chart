@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: slurm
+    app.kubernetes.io/component: slurmd
+  name: {{ .Values.slurmd.name }}
+  {{- if .Values.slurmd.annotations }}
+  annotations:
+    {{- toYaml .Values.slurmd.annotations | nindent 4 }}
+  {{- end }}  
+spec:  
+  replicas: {{ .Values.slurmd.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: slurm
+      app.kubernetes.io/component: slurmd
+      {{- if .Values.slurmd.podLabels }}
+      {{- toYaml .Values.slurmd.podLabels | nindent 6 }}
+      {{- end }}        
+  serviceName: slurmd
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: slurm
+        app.kubernetes.io/component: slurmd
+        {{- if .Values.slurmd.podLabels }}
+        {{- toYaml .Values.slurmd.podLabels | nindent 8 }}
+        {{- end }}          
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsGroup: 1000      
+      containers:
+        - args:
+            - slurmd
+            - -F
+            - -vvv
+            - -N
+            - "$(POD_NAME)"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          image: {{ .Values.slurmImage }}
+          name: slurmd
+          ports:
+            - containerPort: 6818
+          resources:
+{{ toYaml .Values.slurmd.resources | indent 12 }}
+          volumeMounts:
+            - mountPath: /etc/slurm/slurm.conf
+              name: slurm-config-volume
+              subPath: "slurm.conf"
+            - mountPath: /etc/slurm/gres.conf
+              name: slurm-config-volume
+              subPath: "gres.conf"
+            - mountPath: /etc/slurm/cgroup.conf
+              name: slurm-config-volume
+              subPath: "cgroup.conf"               
+            - mountPath: {{ .Values.storage.mountPath }}
+              name: slurm-jobdir
+            - mountPath: /tmp/munge.key
+              name: munge-key-secret
+              subPath: munge.key
+            - name: config-dir
+              mountPath: /home/config
+            - name: authorized-keys
+              mountPath: /home/config/users.yaml
+              subPath: users.yaml               
+          securityContext:
+            #privileged: true
+            runAsUser: 1000
+            runAsGroup: 1000
+      #hostNetwork: true
+      serviceAccountName: {{ .Release.Name }}
+      dnsPolicy: ClusterFirstWithHostNet
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values:
+                - slurmd
+            topologyKey: kubernetes.io/hostname      
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}           
+      dnsConfig:
+        searches:
+          - slurmd.{{ .Release.Namespace }}.svc.cluster.local
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret | default "gitlab-registry-credentials" | quote }}      
+      volumes:
+        - name: slurm-jobdir
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.claimName }}
+        - name: slurm-config-volume
+          configMap:
+            name: {{ .Values.configmaps.slurmConf }}
+            items:
+            - key: "slurm.conf"
+              path: "slurm.conf"
+            - key: "gres.conf"
+              path: "gres.conf"
+            - key: "cgroup.conf"
+              path: "cgroup.conf"              
+        - name: munge-key-secret
+          secret:
+            secretName: {{ .Values.secrets.mungeKey }}
+            defaultMode: 0400
+        - name: config-dir
+          emptyDir: {}
+        - name: authorized-keys
+          configMap:
+            name: {{ .Release.Name }}-ssh-users-config
+            defaultMode: 0664

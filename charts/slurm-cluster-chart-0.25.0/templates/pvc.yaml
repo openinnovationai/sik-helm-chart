@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.storage.claimName }}
+  labels:
+    oip/tenant-id: "{{ .Values.tenantId }}"
+spec:
+  storageClassName: {{ .Values.storage.storageClassName }}
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.storage.capacity }}
+
+
+

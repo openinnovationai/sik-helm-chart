@@ -1,0 +1,163 @@
+slurmImage: registry.gitlab.com/openinnovationai/platform/mlops/slurm-docker/slurm-rocky:a46dacfe
+#registry.gitlab.com/openinnovationai/platform/mlops/slurm-docker/slurm-rocm:910fa853
+#registry.gitlab.com/openinnovationai/platform/mlops/slurm-docker/slurm:3e4fad5c
+#youssefbannay1/slurm-test:23.11-38
+pullSecret: gitlab-registry-credentials
+clustername: "slurm-tenant-b"
+tenantId: "99646478"
+openshift:
+  enabled: "true"
+gpuCount: 0
+nodeSelector:
+  #beta.kubernetes.io/instance-type: t3.2xlarge
+tolerations: 
+  # - effect: NoSchedule
+  #   key: amd.com/gpu
+  #   operator: Exists 
+login:
+  service:
+    type: LoadBalancer
+    annotations:
+     service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+     service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+     service.beta.kubernetes.io/aws-load-balancer-type: nlb
+  # Deployment resource name
+  name: login
+  replicas: 1
+  annotations:
+    #reloader.stakater.com/auto: "true"  
+  tolerations:
+    #- effect: NoSchedule
+    #  key: amd.com/gpu
+    #  operator: Exists
+    #- effect: NoSchedule
+    #  key: tenant
+    #  operator: Equal
+    #  value: inception
+  podLabels:
+    app.kubernetes.io/test: test     
+slurmd:
+  # StatefulSet resource name
+  name: slurmd # NB this must match NodeName= in slurm-cluster-chart/files/slurm.conf
+  replicas: 2
+  annotations:
+    #reloader.stakater.com/auto: "true"
+  tolerations:
+    # - effect: NoSchedule
+    #   key: amd.com/gpu
+    #   operator: Exists
+    # - effect: NoSchedule
+    #   key: tenant
+    #   operator: Equal
+    #   value: inception
+    # - effect: NoExecute
+    #   key: node.kubernetes.io/not-ready
+    #   operator: Exists
+    #   tolerationSeconds: 300
+    # - effect: NoExecute
+    #   key: node.kubernetes.io/unreachable
+    #   operator: Exists
+    #   tolerationSeconds: 300
+    # - effect: NoSchedule
+    #   key: tenant
+    #   operator: Equal
+    #   value: amdexporter
+    # - effect: NoExecute
+    #   key: tenant
+    #   operator: Equal
+    #   value: amdexporter
+    # - effect: NoSchedule
+    #   key: target
+    #   operator: Equal
+    #   value: k8s
+    # - effect: NoExecute
+    #   key: target
+    #   operator: Equal
+    #   value: k8s    
+  podLabels:
+    app.kubernetes.io/test: test
+  resources:
+    requests:
+      cpu: 1
+      memory: 1Gi 
+      nvidia.com/gpu: 0
+    limits:
+      cpu: 1
+      memory: 1Gi
+      nvidia.com/gpu: 0
+
+slurmctld:
+  name: slurmctld
+  annotations:
+    #reloader.stakater.com/auto: "true"  
+  tolerations:
+    # - effect: NoSchedule
+    #   key: amd.com/gpu
+    #   operator: Exists
+    # - effect: NoSchedule
+    #   key: tenant
+    #   operator: Equal
+    #   value: inception
+  podLabels: 
+    app.kubernetes.io/test: test
+  resources:  
+
+
+slurmdbd:
+  annotations:
+    #reloader.stakater.com/auto: "true"
+  tolerations:
+    # - effect: NoSchedule
+    #   key: amd.com/gpu
+    #   operator: Exists
+    # - effect: NoSchedule
+    #   key: tenant
+    #   operator: Equal
+    #   value: inception   
+  podLabels:
+    app.kubernetes.io/test: test
+
+storage:
+  createPVC: true
+  mountPath: /home
+  storageClassName: nfs #vastdata-filesystem-delete
+  claimName: pvc-645745745-shared-storage-slurm
+  capacity: 50Gi
+  tenantId: '645745745'
+
+database:
+  image: mariadb:10.10
+  storage: 10Gi
+  podLabels:
+    app.kubernetes.io/test: test
+  tolerations:
+    # - effect: NoSchedule
+    #   key: amd.com/gpu
+    #   operator: Exists
+    # - effect: NoSchedule
+    #   key: tenant
+    #   operator: Equal
+    #   value: inception  
+  resources:  
+    requests:
+
+# Configmap resource names
+configmaps:
+  slurmConf: slurm-conf-configmap
+  slurmdbdConf: slurmdbd-conf-configmap
+  sshdConfig: sshd-config-configmap
+
+# Public key used for ssh access to the login node
+sshUsers:
+  - admin:
+      sshKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDeME8I1kYiQrU0sWMXExevqNAlSIrD4Xr5xqz96+TwL+n+XjZZ2/GtH1yeQ2bym3UhJsaT71iHcepepIBYgox1/3Z0AYQX8juyyBwDau6n6hteCjtS+e1tlXmI+Eb0gks9yCNLQaJ8ABOvqJRgF9EcJsKrtUFrJvtEljBrKtNVmB0d4IZGCY87ouBzCqo1f4iBJLlAViNO7l95UrvX8FvqLuAkB3KjPJKKe8oe8tC16slRlfW3lDKZvDCJqM1kWgawvK+ymPO4mXi4zsEBGIycz8V+Up05u8aA6c2VMX8K08DPGmzuTeHCcOk0yGX8gkARJxy0JP3sh+q0lhUGinHA58LuAJisPtcwcnLAEzWi5c3nwgkh08R6rdg4siEP4YH8r3uOxvk+uKYSRGaMeHSPHyAeHXjsKnfhahk0ETd2fn3lk9kUJiL5+YF2qcfOCunh3K6qBDzm3PNNoPSbUXmJU0PqH6K4GRupxIBNycFZvE2++TUnZrjHCzEcbv1ksDM= youssefbannay@Youssefs-MacBook-Pro.local"    
+  #- user1:
+  #    sshKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDeME8I1kYiQrU0sWMXExevqNAlSIrD4Xr5xqz96+TwL+n+XjZZ2/GtH1yeQ2bym3UhJsaT71iHcepepIBYgox1/3Z0AYQX8juyyBwDau6n6hteCjtS+e1tlXmI+Eb0gks9yCNLQaJ8ABOvqJRgF9EcJsKrtUFrJvtEljBrKtNVmB0d4IZGCY87ouBzCqo1f4iBJLlAViNO7l95UrvX8FvqLuAkB3KjPJKKe8oe8tC16slRlfW3lDKZvDCJqM1kWgawvK+ymPO4mXi4zsEBGIycz8V+Up05u8aA6c2VMX8K08DPGmzuTeHCcOk0yGX8gkARJxy0JP3sh+q0lhUGinHA58LuAJisPtcwcnLAEzWi5c3nwgkh08R6rdg4siEP4YH8r3uOxvk+uKYSRGaMeHSPHyAeHXjsKnfhahk0ETd2fn3lk9kUJiL5+YF2qcfOCunh3K6qBDzm3PNNoPSbUXmJU0PqH6K4GRupxIBNycFZvE2++TUnZrjHCzEcbv1ksDM= youssefbannay@Youssefs-MacBook-Pro.local"
+  - user2:
+      sshKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDeME8I1kYiQrU0sWMXExevqNAlSIrD4Xr5xqz96+TwL+n+XjZZ2/GtH1yeQ2bym3UhJsaT71iHcepepIBYgox1/3Z0AYQX8juyyBwDau6n6hteCjtS+e1tlXmI+Eb0gks9yCNLQaJ8ABOvqJRgF9EcJsKrtUFrJvtEljBrKtNVmB0d4IZGCY87ouBzCqo1f4iBJLlAViNO7l95UrvX8FvqLuAkB3KjPJKKe8oe8tC16slRlfW3lDKZvDCJqM1kWgawvK+ymPO4mXi4zsEBGIycz8V+Up05u8aA6c2VMX8K08DPGmzuTeHCcOk0yGX8gkARJxy0JP3sh+q0lhUGinHA58LuAJisPtcwcnLAEzWi5c3nwgkh08R6rdg4siEP4YH8r3uOxvk+uKYSRGaMeHSPHyAeHXjsKnfhahk0ETd2fn3lk9kUJiL5+YF2qcfOCunh3K6qBDzm3PNNoPSbUXmJU0PqH6K4GRupxIBNycFZvE2++TUnZrjHCzEcbv1ksDM= youssefbannay@Youssefs-MacBook-Pro.local"
+# Secret resource names
+secrets:
+  mungeKey: munge-key-secret
+
+gres: "NodeName=slurmd-[0-9]"
+#"NodeName=slurmd-[0-9] Name=gpu Type=MI210 File=/dev/dri/renderD[128-135]"

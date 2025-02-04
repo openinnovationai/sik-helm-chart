@@ -1,0 +1,23 @@
+{{- if .Values.storage.createPVC }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.storage.claimName }}
+  labels:
+    oip/tenant-id: "{{ .Values.tenantId }}"
+spec:
+  storageClassName: {{ .Values.storage.storageClassName }}
+  accessModes:
+    - ReadWriteMany
+  mountOptions:
+    - nfsvers=4.1
+    - hard
+    - timeo=600
+    - retrans=2
+  resources:
+    requests:
+      storage: {{ .Values.storage.capacity }}
+{{- end }}
+
+

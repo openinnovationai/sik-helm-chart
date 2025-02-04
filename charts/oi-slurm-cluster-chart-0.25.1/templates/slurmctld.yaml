@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: slurm
+    app.kubernetes.io/component: slurmctld
+  name: {{ .Values.slurmctld.name }}
+  {{- if .Values.slurmctld.annotations }}
+  annotations:
+    {{- toYaml .Values.slurmctld.annotations | nindent 4 }}
+  {{- end }}    
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: slurm
+      app.kubernetes.io/component: slurmctld
+      {{- if .Values.slurmctld.podLabels }}
+      {{- toYaml .Values.slurmctld.podLabels | nindent 6 }}
+      {{- end }}          
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: slurm
+        app.kubernetes.io/component: slurmctld
+        {{- if .Values.slurmctld.podLabels }}
+        {{- toYaml .Values.slurmctld.podLabels | nindent 8 }}
+        {{- end }}              
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsGroup: 1000      
+      containers:
+        - args:
+            - slurmctld
+            - -vvv
+          image: {{ .Values.slurmImage }}
+          name: slurmctld
+          ports:
+            - containerPort: 6817
+          resources:
+{{ toYaml .Values.slurmctld.resources | indent 12 }}
+          volumeMounts:
+            - mountPath: {{ .Values.storage.mountPath }}
+              name: slurm-jobdir
+            - mountPath: /etc/slurm/slurm.conf
+              name: slurm-config-volume
+              subPath: "slurm.conf"
+            - mountPath: /etc/slurm/gres.conf
+              name: slurm-config-volume
+              subPath: "gres.conf"
+            - mountPath: /etc/slurm/cgroup.conf
+              name: slurm-config-volume
+              subPath: "cgroup.conf"               
+            - mountPath: /tmp/munge.key
+              name: munge-key-secret
+              subPath: munge.key            
+            - mountPath: /var/spool/slurmctld
+              name: slurmctld-state
+            - name: config-dir
+              mountPath: /home/config
+            - name: authorized-keys
+              mountPath: /home/config/users.yaml
+              subPath: users.yaml
+          securityContext:
+            #privileged: true
+            runAsUser: 1000
+            runAsGroup: 1000                           
+      dnsConfig:
+        searches:
+          - slurmd.{{ .Release.Namespace }}.svc.cluster.local
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret | default "gitlab-registry-credentials" | quote }}      
+      hostname: slurmctld-0
+      serviceAccountName: {{ .Release.Name }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }} 
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}          
+      volumes:
+        - name: slurm-jobdir
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.claimName }}
+        - name: slurmctld-state
+          persistentVolumeClaim:
+            claimName: var-spool-slurmctld
+        - name: slurm-config-volume
+          configMap:
+            name: {{ .Values.configmaps.slurmConf }}
+            items:
+            - key: "slurm.conf"
+              path: "slurm.conf"
+            - key: "gres.conf"
+              path: "gres.conf"
+            - key: "cgroup.conf"
+              path: "cgroup.conf"              
+        - name: munge-key-secret
+          secret:
+            secretName: {{ .Values.secrets.mungeKey }}
+            defaultMode: 0400
+        - name: config-dir
+          emptyDir: {}
+        - name: authorized-keys
+          configMap:
+            name: {{ .Release.Name }}-ssh-users-config
+            defaultMode: 0664

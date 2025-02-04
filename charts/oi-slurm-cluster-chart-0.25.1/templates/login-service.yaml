@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: slurm
+    app.kubernetes.io/component: login
+  {{- if .Values.login.service.annotations }}
+  annotations:  
+    {{- toYaml .Values.login.service.annotations | nindent 4 }}
+  {{- end }}    
+  name: login
+spec:
+  ports:
+    - name: ssh
+      port: 22
+      targetPort: 22
+    # - name: apache
+    #   port: 80
+    #   targetPort: 80
+    #   protocol: TCP
+    # - name: https
+    #   port: 443
+    #   targetPort: 443
+    #   protocol: TCP
+  type: {{ .Values.login.service.type }}
+  selector:
+    app.kubernetes.io/name: slurm
+    app.kubernetes.io/component: login
+    

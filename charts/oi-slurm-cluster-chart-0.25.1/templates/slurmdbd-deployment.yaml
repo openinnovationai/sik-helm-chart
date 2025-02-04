@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: slurm
+    app.kubernetes.io/component: slurmdbd   
+  name: slurmdbd
+  {{- if .Values.slurmdbd.annotations }}
+  annotations:
+    {{- toYaml .Values.slurmdbd.annotations | nindent 4 }}
+  {{- end }}  
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: slurm
+      app.kubernetes.io/component: slurmdbd
+      {{- if .Values.slurmdbd.podLabels }}
+      {{- toYaml .Values.slurmdbd.podLabels | nindent 6 }}
+      {{- end }}          
+  strategy:
+    type: Recreate  
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: slurm
+        app.kubernetes.io/component: slurmdbd
+        {{- if .Values.slurmdbd.podLabels }}
+        {{- toYaml .Values.slurmdbd.podLabels | nindent 8 }}
+        {{- end }}                           
+    spec:
+      serviceAccountName: {{ .Release.Name }}
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsGroup: 1000   
+      containers:
+        - args:
+            - slurmdbd
+            - -vvv
+          image: {{ .Values.slurmImage }}
+          name: slurmdbd
+          ports:
+            - containerPort: 6819
+          resources: {}
+          volumeMounts:
+            - mountPath: /etc/slurm/slurm.conf
+              name: slurm-config-volume
+              subPath: slurm.conf
+            - mountPath: /tmp/munge.key
+              name: munge-key-secret
+              subPath: munge.key
+            - mountPath: /tmp/slurmdbd.conf
+              name: dbd-config-volume
+              subPath: slurmdbd.conf
+            - name: config-dir
+              mountPath: /home/config
+            - name: authorized-keys
+              mountPath: /home/config/users.yaml
+              subPath: users.yaml           
+          env:
+            - name: StoragePass
+              valueFrom:
+                secretKeyRef:
+                  name: database-auth-secret
+                  key: password
+          securityContext:
+            #privileged: true
+            runAsUser: 1000
+            runAsGroup: 1000                  
+      hostname: slurmdbd
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }} 
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}         
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: {{ .Values.pullSecret | default "gitlab-registry-credentials" | quote }}      
+      volumes:
+        - name: dbd-config-volume
+          configMap:
+            name: {{ .Values.configmaps.slurmdbdConf }}
+        - name: slurm-config-volume
+          configMap:
+            name: {{ .Values.configmaps.slurmConf }}
+        - name: munge-key-secret
+          secret:
+            secretName: {{ .Values.secrets.mungeKey }}
+            defaultMode: 0400
+        - name: config-dir
+          emptyDir: {}
+        - name: authorized-keys
+          configMap:
+            name: {{ .Release.Name }}-ssh-users-config
+            defaultMode: 0664
