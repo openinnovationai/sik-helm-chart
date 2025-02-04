@@ -1,0 +1,25 @@
+apiVersion: v1
+entries:
+  oi-slurm-cluster-chart:
+  - apiVersion: v2
+    appVersion: 1.21.0
+    created: "2025-02-04T12:26:59.658441908Z"
+    description: A Helm chart for Kubernetes
+    digest: 44a4f31136b7813f12e9d8fd851413bfb3854cac81e307f217f74a5892e03334
+    name: oi-slurm-cluster-chart
+    type: application
+    urls:
+    - https://github.com/openinnovationai/sik-helm-chart/releases/download/oi-slurm-cluster-chart-0.25.1/oi-slurm-cluster-chart-0.25.1.tgz
+    version: 0.25.1
+  slurm-cluster-chart:
+  - apiVersion: v2
+    appVersion: 1.21.0
+    created: "2025-02-04T12:26:59.763827576Z"
+    description: A Helm chart for Kubernetes
+    digest: b13e1d171f8cc8c5477fc6e84a9c83d93fe094d6fae570406ef8f9178a189867
+    name: slurm-cluster-chart
+    type: application
+    urls:
+    - https://github.com/openinnovationai/sik-helm-chart/releases/download/slurm-cluster-chart-0.25.0/slurm-cluster-chart-0.25.0.tgz
+    version: 0.25.0
+generated: "2025-02-04T12:26:59.763833267Z"
